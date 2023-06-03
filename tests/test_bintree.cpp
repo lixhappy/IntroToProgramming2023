@@ -1,4 +1,4 @@
-// #ifdef MY_BIN_TREE
+#ifdef MY_BIN_TREE
 
 #include "gtest/gtest.h"
 #include "../src/bintree.hpp"
@@ -22,4 +22,4 @@ TEST(bintree, find_maxsum_minsize_tree) {
     }
 }
 
-// #endif
+#endif
