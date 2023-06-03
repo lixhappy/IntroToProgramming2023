@@ -1,12 +1,4 @@
 #include "avltree.hpp"
-#include "data_base.hpp"
-
-
-template class Hnode<const DBUnit&, CompareSurname>;
-template class Hnode<const DBUnit&, CompareHash>;
-
-template class AVLtree<const DBUnit&, CompareSurname>;
-template class AVLtree<const DBUnit&, CompareHash>;
 
 
 template<class T, class Cmp>
@@ -15,6 +7,8 @@ Hnode<T, Cmp>::Hnode(T key) : key{key} {
     left = nullptr;
     right = nullptr;
 }
+
+
 
 template<class T, class Cmp>
 bool operator<(const Hnode<T, Cmp>& node_l, const Hnode<T, Cmp>& node_g) {
@@ -43,8 +37,8 @@ Hnode<T, Cmp>* rotate_right(Hnode<T, Cmp>* parent) {
 	Hnode<T, Cmp>* child = parent->left;
 	parent->left = child->right;
 	child->right = parent;
-	fixheight(child);
-	fixheight(parent);
+	fix_height(child);
+	fix_height(parent);
 	return child;
 }
 
@@ -53,8 +47,8 @@ Hnode<T, Cmp>* rotate_left(Hnode<T, Cmp>* parent) {
 	Hnode<T, Cmp>* child = parent->right;
 	parent->right = child->left;
 	child->left = parent;
-	fixheight(child);
-	fixheight(parent);
+	fix_height(child);
+	fix_height(parent);
 	return child;
 }
 
@@ -77,13 +71,14 @@ Hnode<T, Cmp>* balance(Hnode<T, Cmp>* node) {
 }
 
 template<class T, class Cmp>
-Hnode<T, Cmp>* insert(Hnode<T, Cmp>* node, T key){
+Hnode<T, Cmp>* insert_node(Hnode<T, Cmp>* node, T key){
+	Cmp compare;
 	if (!node) { return new Hnode<T, Cmp>(key); }
 
-	if (key < node->key) {
-		node->left = insert(node->left, key);
+	if (compare(key, node->key) < 0) {
+		node->left = insert_node(node->left, key);
     } else {
-		node->right = insert(node->right, key);
+		node->right = insert_node(node->right, key);
     }
 
 	return balance(node);
@@ -103,13 +98,14 @@ Hnode<T, Cmp>* remove_min(Hnode<T, Cmp>* node) {
 }
 
 template<class T, class Cmp>
-Hnode<T, Cmp>* remove(Hnode<T, Cmp>* node, T key) {
+Hnode<T, Cmp>* remove_node(Hnode<T, Cmp>* node, T key) {
+	Cmp compare;
 	if (!node) { return 0; }
 
-	if (key < node->key) {
-		node->left = remove(node->left, key);
-    } else if (key > node->key) {
-		node->right = remove(node->right, key);
+	if (compare(key, node->key) < 0) {
+		node->left = remove_node(node->left, key);
+    } else if (compare(key, node->key) > 0) {
+		node->right = remove_node(node->right, key);
     } else {
 		Hnode<T, Cmp>* left = node->left;
 		Hnode<T, Cmp>* right = node->right;
@@ -122,6 +118,9 @@ Hnode<T, Cmp>* remove(Hnode<T, Cmp>* node, T key) {
 	}
     return balance(node);
 }
+
+template<class T, class Cmp>
+AVLtree<T, Cmp>::AVLtree() {}
 
 template<class T, class Cmp>
 AVLtree<T, Cmp>::AVLtree(T key) {
@@ -144,12 +143,12 @@ void AVLtree<T, Cmp>::destroy_tree(Hnode<T, Cmp>* node) {
 
 template<class T, class Cmp>
 void AVLtree<T, Cmp>::insert(T key) {
-    insert(root, key);
+    root = insert_node(root, key);
 }
 
 template<class T, class Cmp>
 void AVLtree<T, Cmp>::remove(T key) {
-    remove(root, key);
+    root = remove_node(root, key);
 }
 
 
@@ -167,7 +166,7 @@ void print_node(std::ostream& os, const Hnode<T, Cmp>* node, int level = 0, Hnod
             os << " ";
         }
         os << ((pos == HnodePos::Left) ? " └ " : ((pos == HnodePos::Right) ? " ┌ " : ""));
-        os << node->value << std::endl;
+        os << node->key << std::endl;
         print_node(os, node->left, level + 1, HnodePos::Left);
     }
 }
@@ -178,19 +177,34 @@ std::ostream& operator<<(std::ostream& os, const AVLtree<T, Cmp>& avl_tree) {
     return os;
 }
 
-DBUnit::DBUnit(std::string name, std::string surname, size_t dormitory, size_t block)
-: name{name}, surname{surname}, dormitory{dormitory}, block{block} {
+template<class T, class Cmp>
+void AVLtree<T, Cmp>::print_tree() {
+	print_node(std::cout, root);
+	std::cout << std::endl;
+}
+
+DBUnit::DBUnit(std::string new_name, std::string new_surname, size_t dormitory, size_t block)
+:dormitory{dormitory}, block{block} {
+	name = new_name;
+	surname = new_surname;
     password_hash = std::hash<std::string>{}(surname + name + std::to_string(dormitory) + std::to_string(block));
 }
 
-bool CompareSurname::operator()(const DBUnit& db_unit_less, const DBUnit& db_unit_greatest){
+int CompareSurname::operator()(const DBUnit& db_unit_less, const DBUnit& db_unit_greatest){
     return db_unit_less.surname.compare(db_unit_greatest.surname);
 }
 
-bool CompareHash::operator()(const DBUnit& db_unit_less, const DBUnit& db_unit_greatest) {
-    return db_unit_less.password_hash < db_unit_greatest.password_hash;
+int CompareHash::operator()(const DBUnit& db_unit_less, const DBUnit& db_unit_greatest) {
+    return db_unit_less.password_hash < db_unit_greatest.password_hash ? -1 : db_unit_less.password_hash == db_unit_greatest.password_hash ? 0 : 1;
 }
 
 std::ostream& operator<<(std::ostream& os, const DBUnit& db_unit) {
-    return os << db_unit.surname << " " << db_unit.name << "pass hash : " << db_unit.password_hash;
+    return os << db_unit.surname << " " << db_unit.name << ", pass hash : " << db_unit.password_hash;
 }
+
+
+template class Hnode<DBUnit, CompareSurname>;
+template class Hnode<DBUnit, CompareHash>;
+
+template class AVLtree<DBUnit, CompareSurname>;
+template class AVLtree<DBUnit, CompareHash>;
